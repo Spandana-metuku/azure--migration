@@ -1,0 +1,140 @@
+Fix sshd_config to allow all users
+        Updated /etc/ssh/sshd_config - set AllowUsers * and Banner /etc/issue.net
+        service sshd restart
+        o Fix system-auth password-auth to update UID restriction of 1000 to 500
+    · 
+     Create zpc user
+        o groupadd -g 500 zpc
+        o useradd -g zpc -m -u 500 -s /bin/bash zpc
+        o usermod -L zpc
+        o su - zpc
+        o mkdir .ssh
+        o chmod 700 .ssh
+        o cd /etc/sudoers.d
+        o visudo -f 90-cloud-init-users -- replace all contents with zpc ALL=(ALL) NOPASSWD:ALL
+    · 
+    · 
+     Delete gecloud user (conflicts with hadmin)
+        o userdel -r -f gecloud
+    · 
+     yum update && reboot
+    · 
+     yum install nfs-utils ksh
+    · 
+     Add hadmin
+    groupadd -g 1001 hadmin
+    useradd -d /home/hadmin -g hadmin -m -c "EPM Hyperion Admin" -s /bin/bash -u 1001 hadmin
+    usermod -L hadmin
+    · 
+     Mount /software (and /software/DB)
+        o zeusspvmlnfs01.corporate.ge.com:/software /software  nfs  rw,hard,rsize=65536,wsize=65536,vers=4,sec=sys,tcp 0 0
+        o mkdir /software
+        o mount -a
+    · 
+     Install and Configure 2FA (access.conf)
+        o /software/scripts/configure_2FA.ksh
+        o vi /etc/security/access.conf
+        + : root : ALL
+        + : zpc : ALL
+        + : sapm1 : ALL
+        + : sapm2 : ALL
+        + : @servervname : ALL
+        + : @g125919 : ALL
+        + : ALL : cron crond at atd
+        - : ALL : ALL
+    · 
+     Resize /var (12g), /home (4g), /tmp (4g), /opt (4g) 
+        o lvresize -r -L 4g rootvg/homelv
+        o lvresize -r -L 4g rootvg/tmplv
+        o lvresize -r -L 4g rootvg/optlv
+        o lvresize -r -L 12g rootvg/varlv
+    · 
+     Install GE Banner (updated sshd_config)
+        o cp -p /software/scripts/OS/openscap/issue /etc/issue
+        o cp -p /software/scripts/OS/openscap/issue /etc/issue.net
+    · 
+     Configure SEARCH in ifcfg-eth0  (resolv.conf)
+        o echo 'SEARCH="corporate.ge.com"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    · 
+     Configure Eastern time zone
+        o timedatectl set-timezone America/New_York
+    · 
+     Configure IT Security Reporting (cron)   
+        o crontab -e
+        # IT Security Report
+        20 5 * * * /software/scripts/user_report_host.ksh
+    · 
+     Configure postfix SMTP Relay (update /etc/postfix/main.cf)
+        o vi /etc/postfix/main.cf
+        mydestination = FQDN, localhost.localdomain, localhost
+        mydomain = corporate.ge.com
+        myhostname = FQDN
+        myorigin = $myhostname
+        relayhost = [e2ksmtp01.e2k.ad.ge.com]
+    o service postfix restart
+    · 
+     Configure Crowdstrike (already installed, but must configure)
+        o /opt/CrowdStrike/falconctl -f -s --cid=D96C92BDFB0946B589727FF82FB4601A-9E
+    · 
+     Configure Splunk (already installed, but must configure)
+        o cd /opt/splunkforwarder/etc/apps/deployment_client/default/
+        o vi deploymentclient.conf
+        clientName = eastus:170-gr-vnet:550aadd3-7cb2-4c61-89b0-8adf295ab007:Standard_E16-8ds_v4
+    o cd /opt/splunkforwarder/etc/system/local
+    o vi inputs.conf
+        host = zeusspvmlnfs01::10.210.162.8:eastus::550aadd3-7cb2-4c61-89b0-8adf295ab007
+    · 
+     Add superusr group (9999)
+        o groupadd -g 9999 superusr
+    · 
+     Install sudoers
+        o cd /etc/sudoers.d
+        o cp -p /software/scripts/OS/sudoers/FINAZINFRA_ROOT_ADMIN .
+        o cp -p /software/scripts/OS/sudoers/SAPM .       
+    · 
+     Configure SAPM accounts
+        o /software/scripts/configure_SAPM.ksh
+    · 
+     Link to Qualys    ---- Security solution is not created yet
+        o Connect to Security Center -> Security Solutions
+        o Filter on EPMSS subscription
+        o Select zeussvaq01
+        o Link new VM zeusspvmlnfs01
+    · 
+    o Start VM via Portal
+    · 
+     Add DNS Record
+        o Goto: dnsrequest.corporate.ge.com
+    · 
+     Create SMTP Relay Request
+        o Goto: geit.service-now.com
+
+ 
+
+    · 
+     Add to Backups and Configure (/etc/azure – DB and Essbase specific)
+        o Enable in Azure Portal EPMSS-Backup-Vault
+    · 
+     Add to SAPM (sapm1, sapm2, zpc)  
+    · 
+     Assign Tags
+    · 
+     Disable IPTables
+        o iptables -F
+        o iptables -X
+        o iptables-save
+    · 
+     Disable Firewalld
+        o systemctl disable firewalld
+        o systemctl stop firewalld
+
+=============================================================
++ : @g1000250 : ALL
+[1/1 11:44 AM] K, Midhun (GE CoreTech & Cyber, consultant)
+    
+EastUS:170-gr-vnet:550aadd3-7cb2-4c61-89b0-8adf295ab007
+
+to create ansible user 
+groupadd -g 1001 <groupname>
+useradd -d /home/ansible -g ansible -m -c "Ansible Admin" -s /bin/bash -u 1001 ansible
+uid=1001(ansible) gid=1001(ansible) groups=1001(ansible)
