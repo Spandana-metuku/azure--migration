@@ -49,12 +49,12 @@ Fix sshd_config to allow all users
         o lvresize -r -L 4g rootvg/optlv
         o lvresize -r -L 12g rootvg/varlv
     · 
-     Install GE Banner (updated sshd_config)
+     Install  Banner (updated sshd_config)
         o cp -p /software/scripts/OS/openscap/issue /etc/issue
         o cp -p /software/scripts/OS/openscap/issue /etc/issue.net
     · 
      Configure SEARCH in ifcfg-eth0  (resolv.conf)
-        o echo 'SEARCH="corporate.ge.com"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+        o echo 'SEARCH="corporate.com"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
     · 
      Configure Eastern time zone
         o timedatectl set-timezone America/New_York
@@ -67,10 +67,10 @@ Fix sshd_config to allow all users
      Configure postfix SMTP Relay (update /etc/postfix/main.cf)
         o vi /etc/postfix/main.cf
         mydestination = FQDN, localhost.localdomain, localhost
-        mydomain = corporate.ge.com
+        mydomain = corporate.com
         myhostname = FQDN
         myorigin = $myhostname
-        relayhost = [e2ksmtp01.e2k.ad.ge.com]
+        relayhost = [e2ksmtp01.e2k.ad..com]
     o service postfix restart
     · 
      Configure Crowdstrike (already installed, but must configure)
